@@ -11,6 +11,18 @@
 #include <time.h>
 #include "Glut.h"
 
+// Game state variables
+
+typedef enum {
+	MENU,
+	PLAYING,
+	GAME_OVER
+} GameState;
+
+GameState gameState = MENU;
+
+int selectedMenuItem = 0; // 0 for Easy, 1 for Medium, 2 for Hard
+
 // Global variables
 
 const double Xmin = 0.0, Xmax = 3.0;
@@ -24,6 +36,8 @@ int playerScores[2] = { 0, 0 };
 double playerYs[2] = { 1.5, 1.5 };
 double verticalStep = 0.08;
 
+int winner = 0;
+
 // Paddle variables
 
 double paddleWidth;
@@ -33,8 +47,8 @@ double spaceBehindPaddle = 0.02;
 // Ball variables
 
 double ballX = 1.5, ballY = 1.5;
-double startBallVX = 0.025, startBallVY = 0.0;
-double ballVX = 0.02, ballVY = 0.0;
+double startBallVX = 0.03, startBallVY = 0.0;
+double ballVX = 0.03, ballVY = 0.0;
 double ballSize = 0.025;
 double speed;
 double maxAngle = 60.0;
@@ -67,6 +81,15 @@ void updateTargetRegion() {
 	printf("Trying to achieve bounce angle: +-%f\n", maxAngle - targetRegion * 2 * maxAngle);
 }
 
+// Resetting the game
+
+void resetGame() {
+	ballX = 1.5, ballY = 1.5;
+	ballVX = startBallVX, ballVY = startBallVY;
+	playerYs[0] = 1.5, playerYs[1] = 1.5;
+	playerScores[0] = 0, playerScores[1] = 0;
+}
+
 // Check functions
 
 void checkPlayerBounds(int playerId) {
@@ -82,44 +105,95 @@ int checkBallWithinPaddle(int playerId) {
 
 void myKeyboardFunc(unsigned char key, int x, int y)
 {
-	//double paddleHeight = 5 * (Ymax - Ymin) / (2 * numLines + 1);
-	switch (key) {
-	case 27:
-		// Escape key
-		exit(0);
-		break;
-	case 'r':
-	case 'R':
-		// Reset scores
-		playerScores[0] = 0;
-		playerScores[1] = 0;
-		glutPostRedisplay();
-		break;
-	case '1':
-		playerScores[0]++;
-		glutPostRedisplay();
-		break;
-	case '2':
-		playerScores[1]++;
-		glutPostRedisplay();
-		break;
+	printf("Key pressed: %d\n", key);
+	if (gameState == PLAYING) {
+		switch (key) {
+		case 27:
+			// Escape key
+			exit(0);
+			break;
+		case 'r':
+		case 'R':
+			// Reset scores
+			resetGame();
+			glutPostRedisplay();
+			break;
+		//case '1':
+		//	playerScores[0]++;
+		//	glutPostRedisplay();
+		//	break;
+		//case '2':
+		//	playerScores[1]++;
+		//	glutPostRedisplay();
+		//	break;
+		}
+	}
+	else if (gameState == GAME_OVER) {
+		printf("Key pressed in GAME_OVER state: %d\n", key);
+		switch (key) {
+		case 27:		
+			// Escape key
+			exit(0);
+			break;
+		case 'm':
+		case 'M':
+			// Return to menu
+			gameState = MENU;
+			glutPostRedisplay();
+			break;
+		case 'r':
+		case 'R':
+			// Reset scores and start new game
+			resetGame();
+			gameState = PLAYING;
+			break;
+		}
+	}
+	else {
+		switch (key) {
+		case 27:
+			// Escape key
+			exit(0);
+			break;
+		case 13:
+			// Enter key
+			difficulty = (Difficulty)selectedMenuItem;
+			printf("Selected difficulty: %d\n", difficulty);
+			playerScores[0] = 0;
+			playerScores[1] = 0;
+			gameState = PLAYING;
+			break;
+		}
 	}
 }
 
 void mySpecialKeyFunc(int key, int x, int y)
 {
-	// double paddleHeight = 5 * (Ymax - Ymin) / (2 * numLines + 1);
-	switch (key) {
-	case GLUT_KEY_UP:
-		// Move player 1 up
-		playerYs[1] += verticalStep;
-		checkPlayerBounds(1);
-		break;
-	case GLUT_KEY_DOWN:
-		// Move player 1 down
-		playerYs[1] -= verticalStep;
-		checkPlayerBounds(1);
-		break;
+	if (gameState == MENU) {
+		switch (key) {
+		case GLUT_KEY_DOWN:
+			// Move selection down
+			selectedMenuItem = (selectedMenuItem + 1) % 3;
+			break;
+		case GLUT_KEY_UP:
+			// Move selection up
+			selectedMenuItem = (selectedMenuItem + 2) % 3; // adding 2 is equivalent to subtracting 1 modulo 3
+			break;
+		}
+	} 
+	else if (gameState == PLAYING) {
+		switch (key) {
+		case GLUT_KEY_UP:
+			// Move player 1 up
+			playerYs[1] += verticalStep;
+			checkPlayerBounds(1);
+			break;
+		case GLUT_KEY_DOWN:
+			// Move player 1 down
+			playerYs[1] -= verticalStep;
+			checkPlayerBounds(1);
+			break;
+		}
 	}
 }
 
@@ -282,9 +356,6 @@ void drawCenterLine() {
 }
 
 void drawPaddle(int playerId) {
-	paddleWidth = (Xmax - Xmin) / 42;
-	paddleHeight = 7 * (Ymax - Ymin) / (2 * numLines + 1);
-
 	double playerX; // left edge of the paddle (in both cases)
 
 	if (playerId) {
@@ -317,6 +388,56 @@ void drawBall() {
 	glEnd();
 }
 
+void drawText(float x, float y, char* text)
+{
+	glRasterPos2f(x, y);
+
+	while (*text)
+	{
+		glutBitmapCharacter(GLUT_BITMAP_9_BY_15,
+			*text
+		);
+
+		text++;
+	}
+}
+
+void drawMenu() {
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, 0.0);
+
+	drawText(1.0, 2.5, "SELECT DIFFICULTY");
+	if (selectedMenuItem == EASY) {
+		drawText(1.0, 2.0, "> EASY <");
+		drawText(1.0, 1.5, "MEDIUM");
+		drawText(1.0, 1.0, "HARD");
+	}
+	else if (selectedMenuItem == MEDIUM) {
+		drawText(1.0, 2.0, "EASY");
+		drawText(1.0, 1.5, "> MEDIUM <");
+		drawText(1.0, 1.0, "HARD");
+	}
+	else {
+		drawText(1.0, 2.0, "EASY");
+		drawText(1.0, 1.5, "MEDIUM");
+		drawText(1.0, 1.0, "> HARD <");
+	}
+
+	glPopMatrix();
+}
+
+void drawEndScreen()
+{
+	char* endText[2] = {"YOU LOSE!", "YOU WIN!"};
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, 0.0);
+	drawText(1.0, 2.75, "GAME OVER");
+	drawText(1.0, 2.5, endText[winner]);
+	drawText(1.0, 2.0, "PRESS R TO RESTART");
+	drawText(1.0, 1.5, "PRESS M TO RETURN TO MENU");
+	glPopMatrix();
+}
+
 void drawScene(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -325,14 +446,24 @@ void drawScene(void)
 	glLoadIdentity();
 	glPushMatrix();
 
-	drawCenterLine();
+	switch (gameState) {
+	case MENU:
+		drawMenu();
+		break;
+	case PLAYING:
+		drawCenterLine();
 
-	for (int i = 0; i < 2; i++) {
-		drawPlayerScore(i);
-		drawPaddle(i);
+		for (int i = 0; i < 2; i++) {
+			drawPlayerScore(i);
+			drawPaddle(i);
+		}
+
+		drawBall();
+		break;
+	case GAME_OVER:
+		drawEndScreen();
+		break;
 	}
-
-	drawBall();
 
 	glutSwapBuffers();
 }
@@ -347,7 +478,7 @@ void calculateBounce(int playerId) {
 	else if (normalizedYRelation < -1.0) normalizedYRelation = -1.0;
 	double bounceAngle = normalizedYRelation * maxAngle * M_PI / 180.0; // convert to radians
 	if (ballVX < 0) printf("Bounce angle: %f degrees\n", bounceAngle * 180.0 / M_PI);
-	speed *= 1.08;
+	speed *= 1.03;
 	ballVX = direction * speed * cos(bounceAngle);
 	ballVY = speed * sin(bounceAngle);
 }
@@ -440,6 +571,14 @@ void myTimer(int value) {
 		playerScores[1]++;
 	}
 
+	for (int i = 0; i < 2; i++) {
+		if (playerScores[i] > 10) {
+			winner = i;
+			resetGame();
+			gameState = GAME_OVER;
+		}
+	}
+
 	// Check if ball hits top or bottom wall
 	if (ballY + ballSize >= Ymax) {
 		ballY = Ymax - ballSize;
@@ -451,7 +590,10 @@ void myTimer(int value) {
 	}
 
 	glutPostRedisplay();
+	//if (gameState != PLAYING) {
 	glutTimerFunc(16, myTimer, 0);
+		//return;
+	//}
 }
 
 // Window functions
@@ -499,16 +641,19 @@ int main(int argc, char** argv)
 {
 	srand(time(NULL));
 
-	while (difficulty == UNASSIGNED) {
-		printf("Enter difficulty: 0 - easy, 1 - medium, 2 - hard: ");
-		int intDifficulty = 3;
-		scanf_s("%d", &intDifficulty);
-		difficulty = (Difficulty)intDifficulty;
-		if (difficulty < 0 || difficulty > 2) {
-			printf("Invalid difficulty. Please try again.\n");
-			difficulty = UNASSIGNED;
-		}
-	}
+	//while (difficulty == UNASSIGNED) {
+	//	printf("Enter difficulty: 0 - easy, 1 - medium, 2 - hard: ");
+	//	int intDifficulty = 3;
+	//	scanf_s("%d", &intDifficulty);
+	//	difficulty = (Difficulty)intDifficulty;
+	//	if (difficulty < 0 || difficulty > 2) {
+	//		printf("Invalid difficulty. Please try again.\n");
+	//		difficulty = UNASSIGNED;
+	//	}
+	//}
+
+	paddleWidth = (Xmax - Xmin) / 42;
+	paddleHeight = 7 * (Ymax - Ymin) / (2 * numLines + 1);
 
 	glutInit(&argc, argv);
 
