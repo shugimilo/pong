@@ -28,6 +28,12 @@ int selectedMenuItem = 0; // 0 for Easy, 1 for Medium, 2 for Hard
 const double Xmin = 0.0, Xmax = 3.0;
 const double Ymin = 0.0, Ymax = 3.0;
 
+int windowWidth = 360, windowHeight = 360;
+
+double worldUnitsPerPixelX, worldUnitsPerPixelY;
+
+double charWidthWorld, charHeightWorld;
+
 int numLines = 30; // cosmetic value for drawing the center line
 
 // Player variables
@@ -388,9 +394,23 @@ void drawBall() {
 	glEnd();
 }
 
+void calculateTextPosition(char* text, double x, double y, double* outX, double* outY) {
+	int textWidthPixels = 0;
+	for (char* c = text; *c != '\0'; c++) {
+		textWidthPixels += glutBitmapWidth(GLUT_BITMAP_9_BY_15, *c);
+	}
+	double textWidthWorld = textWidthPixels * worldUnitsPerPixelX;
+	double textHeightWorld = 15 * worldUnitsPerPixelY;
+	*outX = x - textWidthWorld / 2;
+	*outY = y - textHeightWorld / 2;
+}
+
 void drawText(float x, float y, char* text)
 {
-	glRasterPos2f(x, y);
+	double tx, ty;
+	calculateTextPosition(text, x, y, &tx, &ty);
+
+	glRasterPos2f(tx, ty);
 
 	while (*text)
 	{
@@ -403,24 +423,25 @@ void drawText(float x, float y, char* text)
 }
 
 void drawMenu() {
+	double xCenter = (Xmax - Xmin) / 2;
 	glPushMatrix();
-	glTranslatef(0.0, 0.0, 0.0);
+	//glTranslatef(0.0, 0.0, 0.0);
 
-	drawText(1.0, 2.5, "SELECT DIFFICULTY");
+	drawText(xCenter, 2.5, "SELECT DIFFICULTY:");
 	if (selectedMenuItem == EASY) {
-		drawText(1.0, 2.0, "> EASY <");
-		drawText(1.0, 1.5, "MEDIUM");
-		drawText(1.0, 1.0, "HARD");
+		drawText(xCenter, 2.0, "> EASY <");
+		drawText(xCenter, 1.5, "MEDIUM");
+		drawText(xCenter, 1.0, "HARD");
 	}
 	else if (selectedMenuItem == MEDIUM) {
-		drawText(1.0, 2.0, "EASY");
-		drawText(1.0, 1.5, "> MEDIUM <");
-		drawText(1.0, 1.0, "HARD");
+		drawText(xCenter, 2.0, "EASY");
+		drawText(xCenter, 1.5, "> MEDIUM <");
+		drawText(xCenter, 1.0, "HARD");
 	}
 	else {
-		drawText(1.0, 2.0, "EASY");
-		drawText(1.0, 1.5, "MEDIUM");
-		drawText(1.0, 1.0, "> HARD <");
+		drawText(xCenter, 2.0, "EASY");
+		drawText(xCenter, 1.5, "MEDIUM");
+		drawText(xCenter, 1.0, "> HARD <");
 	}
 
 	glPopMatrix();
@@ -428,13 +449,14 @@ void drawMenu() {
 
 void drawEndScreen()
 {
+	double xCenter = (Xmax - Xmin) / 2;
 	char* endText[2] = {"YOU LOSE!", "YOU WIN!"};
 	glPushMatrix();
-	glTranslatef(0.0, 0.0, 0.0);
-	drawText(1.0, 2.75, "GAME OVER");
-	drawText(1.0, 2.5, endText[winner]);
-	drawText(1.0, 2.0, "PRESS R TO RESTART");
-	drawText(1.0, 1.5, "PRESS M TO RETURN TO MENU");
+	//glTranslatef(0.0, 0.0, 0.0);
+	drawText(xCenter, 2.5, "GAME OVER");
+	drawText(xCenter, 2.0, endText[winner]);
+	drawText(xCenter, 1.5, "PRESS R TO RESTART");
+	drawText(xCenter, 1.0, "PRESS M TO RETURN TO MENU");
 	glPopMatrix();
 }
 
@@ -605,36 +627,43 @@ void initRendering()
 
 void resizeWindow(int w, int h)
 {
+	windowWidth = w;
+	windowHeight = h;
+
 	double scale, center;
 	double windowXmin, windowXmax, windowYmin, windowYmax;
 
 	glViewport(0, 0, w, h);
-
 	w = (w == 0) ? 1 : w;
 	h = (h == 0) ? 1 : h;
+
 	if ((Xmax - Xmin) / w < (Ymax - Ymin) / h) {
 		scale = ((Ymax - Ymin) / h) / ((Xmax - Xmin) / w);
 		center = (Xmax + Xmin) / 2;
-		windowXmin = center - (center - Xmin)*scale;
-		windowXmax = center + (Xmax - center)*scale;
+		windowXmin = center - (center - Xmin) * scale;
+		windowXmax = center + (Xmax - center) * scale;
 		windowYmin = Ymin;
 		windowYmax = Ymax;
 	}
 	else {
 		scale = ((Xmax - Xmin) / w) / ((Ymax - Ymin) / h);
 		center = (Ymax + Ymin) / 2;
-		windowYmin = center - (center - Ymin)*scale;
-		windowYmax = center + (Ymax - center)*scale;
+		windowYmin = center - (center - Ymin) * scale;
+		windowYmax = center + (Ymax - center) * scale;
 		windowXmin = Xmin;
 		windowXmax = Xmax;
 	}
 
+	// Calculate conversion AFTER knowing the real visible bounds
+	worldUnitsPerPixelX = (windowXmax - windowXmin) / windowWidth;
+	worldUnitsPerPixelY = (windowYmax - windowYmin) / windowHeight;
+	charWidthWorld = 9 * worldUnitsPerPixelX;
+	charHeightWorld = 15 * worldUnitsPerPixelY;
+
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(windowXmin, windowXmax, windowYmin, windowYmax, -1, 1);
-
 }
-
 // Main function
 
 int main(int argc, char** argv)
