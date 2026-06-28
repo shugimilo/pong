@@ -16,6 +16,7 @@
 typedef enum {
 	MENU,
 	PLAYING,
+	PAUSED,
 	GAME_OVER
 } GameState;
 
@@ -124,6 +125,12 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 			resetGame();
 			glutPostRedisplay();
 			break;
+		case 'p':
+		case 'P':
+			// Pause game
+			gameState = PAUSED;
+			glutPostRedisplay();
+			break;
 		//case '1':
 		//	playerScores[0]++;
 		//	glutPostRedisplay();
@@ -132,6 +139,20 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 		//	playerScores[1]++;
 		//	glutPostRedisplay();
 		//	break;
+		}
+	}
+	else if (gameState == PAUSED) {
+		switch (key) {
+		case 'p':
+		case 'P':
+			gameState = PLAYING;
+			break;
+		case 'M':
+		case 'm':
+		case 27:
+			gameState = MENU;
+			resetGame();
+			break;
 		}
 	}
 	else if (gameState == GAME_OVER) {
@@ -422,6 +443,16 @@ void drawText(float x, float y, char* text)
 	}
 }
 
+void drawPauseScreen()
+{
+	double xCenter = (Xmax - Xmin) / 2;
+	glPushMatrix();
+	drawText(xCenter, 2.0, "PAUSED");
+	drawText(xCenter, 1.5, "PRESS P TO RESUME");
+	drawText(xCenter, 1.0, "PRESS M TO RETURN TO MENU");
+	glPopMatrix();
+}
+
 void drawMenu() {
 	double xCenter = (Xmax - Xmin) / 2;
 	glPushMatrix();
@@ -481,6 +512,18 @@ void drawScene(void)
 		}
 
 		drawBall();
+		break;
+	case PAUSED:
+		drawCenterLine();
+
+		for (int i = 0; i < 2; i++) {
+			drawPlayerScore(i);
+			drawPaddle(i);
+		}
+
+		drawBall();
+
+		drawPauseScreen();
 		break;
 	case GAME_OVER:
 		drawEndScreen();
@@ -560,13 +603,17 @@ void movePlayer1() {
 // Timer function
 
 void myTimer(int value) {
+	if (gameState != PLAYING) {
+		glutPostRedisplay();
+		glutTimerFunc(16, myTimer, 0);
+		return;
+	}
+
 	// Move ball
 	speed = sqrt(pow(ballVX, 2) + pow(ballVY, 2));
 	ballX += ballVX;
 	ballY += ballVY;
-
 	movePlayer1();
-
 	// Check paddle collision
 	if ((ballX + ballSize >= Xmax - spaceBehindPaddle - paddleWidth) && checkBallWithinPaddle(1)) {
 		//printf("Player 2 hit the ball!\n");
@@ -577,7 +624,6 @@ void myTimer(int value) {
 		printf("Player 1 hit the ball!\n");
 		calculateBounce(0);
 	}
-
 	// Check if ball out of bounds - award point
 	if (ballX + ballSize >= Xmax) {
 		ballX = 1.5;
@@ -585,14 +631,14 @@ void myTimer(int value) {
 		ballVX = startBallVX;
 		ballVY = startBallVY;
 		playerScores[0]++;
-	} else if (ballX - ballSize <= Xmin) {
+	}
+	else if (ballX - ballSize <= Xmin) {
 		ballX = 1.5;
 		ballY = 1.5;
 		ballVX = -startBallVX;
 		ballVY = startBallVY;
 		playerScores[1]++;
 	}
-
 	for (int i = 0; i < 2; i++) {
 		if (playerScores[i] > 10) {
 			winner = i;
@@ -600,7 +646,6 @@ void myTimer(int value) {
 			gameState = GAME_OVER;
 		}
 	}
-
 	// Check if ball hits top or bottom wall
 	if (ballY + ballSize >= Ymax) {
 		ballY = Ymax - ballSize;
@@ -610,12 +655,8 @@ void myTimer(int value) {
 		ballY = Ymin + ballSize;
 		ballVY = fabs(ballVY);
 	}
-
 	glutPostRedisplay();
-	//if (gameState != PLAYING) {
 	glutTimerFunc(16, myTimer, 0);
-		//return;
-	//}
 }
 
 // Window functions
