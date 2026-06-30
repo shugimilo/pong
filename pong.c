@@ -83,8 +83,6 @@ double targetRegion;
 
 void updateTargetRegion() {
 	targetRegion = (rand() % 50) / 100.0; // should produce numbers between 0 and 0.5
-	// paddleTop - targetRegion*paddleHeight
-	// printf("Random value generated: %f\nTarget region updated: +-%f\n", targetRegion, targetRegion * paddleHeight);
 	printf("Trying to achieve bounce angle: +-%f\n", maxAngle - targetRegion * 2 * maxAngle);
 }
 
@@ -131,14 +129,6 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 			gameState = PAUSED;
 			glutPostRedisplay();
 			break;
-		//case '1':
-		//	playerScores[0]++;
-		//	glutPostRedisplay();
-		//	break;
-		//case '2':
-		//	playerScores[1]++;
-		//	glutPostRedisplay();
-		//	break;
 		}
 	}
 	else if (gameState == PAUSED) {
@@ -364,7 +354,6 @@ void drawPlayerScore(int playerId) {
 
 void drawCenterLine() {
 	double x = (Xmax - Xmin) / 2;
-	//printf("x: %f\n", x);
 	double step = (Ymax - Ymin) / (2 * numLines + 1);
 	double y = Ymin + step;
 
@@ -456,7 +445,6 @@ void drawPauseScreen()
 void drawMenu() {
 	double xCenter = (Xmax - Xmin) / 2;
 	glPushMatrix();
-	//glTranslatef(0.0, 0.0, 0.0);
 
 	drawText(xCenter, 2.5, "SELECT DIFFICULTY:");
 	if (selectedMenuItem == EASY) {
@@ -483,7 +471,6 @@ void drawEndScreen()
 	double xCenter = (Xmax - Xmin) / 2;
 	char* endText[2] = {"YOU LOSE!", "YOU WIN!"};
 	glPushMatrix();
-	//glTranslatef(0.0, 0.0, 0.0);
 	drawText(xCenter, 2.5, "GAME OVER");
 	drawText(xCenter, 2.0, endText[winner]);
 	drawText(xCenter, 1.5, "PRESS R TO RESTART");
@@ -567,11 +554,11 @@ void movePlayer1() {
 		break;
 	case MEDIUM:
 		if (ballBottom > paddleTop - 0.35*paddleHeight) {
-			playerYs[0] += (rand() % 2) * (verticalStep * 0.8); //+ (rand() / RAND_MAX) * (paddleHeight / 2);
+			playerYs[0] += (rand() % 2) * (verticalStep * 0.8);
 			checkPlayerBounds(0);
 		}
 		else if (ballTop < paddleBottom + 0.35*paddleHeight) {
-			playerYs[0] -= (rand() % 2) * (verticalStep * 0.8); //- (rand() / RAND_MAX) * (paddleHeight / 2);
+			playerYs[0] -= (rand() % 2) * (verticalStep * 0.8);
 			checkPlayerBounds(0);
 		}
 		break;
@@ -590,12 +577,6 @@ void movePlayer1() {
 			playerYs[0] -= verticalStep * 0.9;
 			checkPlayerBounds(0);
 		}
-
-		// Try to make the angle random, not always near the max
-		//if (ballTop < paddleTop && ballBottom > paddleBottom && paddleRightEdge < ballLeft + 3 * ballVX) {
-		//	int offset = (rand() % 2) * 2 - 1;
-		//	playerYs[0] += offset * ((rand() % 10) / 10) * (paddleHeight / 2);
-		//}
 		break;
 	}
 }
@@ -710,17 +691,6 @@ void resizeWindow(int w, int h)
 int main(int argc, char** argv)
 {
 	srand(time(NULL));
-
-	//while (difficulty == UNASSIGNED) {
-	//	printf("Enter difficulty: 0 - easy, 1 - medium, 2 - hard: ");
-	//	int intDifficulty = 3;
-	//	scanf_s("%d", &intDifficulty);
-	//	difficulty = (Difficulty)intDifficulty;
-	//	if (difficulty < 0 || difficulty > 2) {
-	//		printf("Invalid difficulty. Please try again.\n");
-	//		difficulty = UNASSIGNED;
-	//	}
-	//}
 
 	paddleWidth = (Xmax - Xmin) / 42;
 	paddleHeight = 7 * (Ymax - Ymin) / (2 * numLines + 1);
